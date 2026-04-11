@@ -246,8 +246,6 @@ mkdir -p "$SHARED_DIR"
 echo "0" > "$SHARED_DIR/consumers"
 rm -f "$SHARED_DIR/preview.jpg" "$SHARED_DIR/cmd.pipe"
 
-xhost +local: 2>/dev/null || true
-
 WATCHER_PID=""
 if [ -x "$INSTALL_DIR/vcam_watcher.sh" ]; then
     "$INSTALL_DIR/vcam_watcher.sh" "$VCAM_DEVICE" &
@@ -318,12 +316,9 @@ $CONTAINER_CMD run --rm \
     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
     $XAUTH_ARGS \
     $DBUS_ARGS \
-    -v "$HOME:/host_home:ro" \
     -v "$CONFIG_DIR:/root/.config/blucast:rw" \
     -v "$SHARED_DIR:$SHARED_DIR:rw" \
     -v "/dev/dri:/dev/dri" \
-    --ipc=host \
-    --network host \
     "$GHCR_IMAGE" 2>&1
 RUNSCRIPT_EOF
 chmod +x "$INSTALL_DIR/run.sh"
