@@ -50,7 +50,7 @@ fi
 
 echo -e "${BLUE}[2/5]${NC} Setting up virtual camera..."
 
-if ! modinfo v4l2loopback &>/dev/null 2>&1; then
+if ! sudo modinfo v4l2loopback &>/dev/null 2>&1; then
     echo "  Installing v4l2loopback..."
     if command -v dnf &>/dev/null; then
         sudo dnf install -y v4l2loopback kmod-v4l2loopback 2>/dev/null \
@@ -64,7 +64,7 @@ if ! modinfo v4l2loopback &>/dev/null 2>&1; then
         die "Unsupported package manager. Install v4l2loopback manually."
     fi
 fi
-modinfo v4l2loopback &>/dev/null 2>&1 || die "v4l2loopback module not available. Reboot may be needed."
+sudo modinfo v4l2loopback &>/dev/null 2>&1 || die "v4l2loopback module not available. Reboot may be needed."
 log "v4l2loopback module available"
 
 for tool_pkg in "lsof lsof" "fuser psmisc"; do
