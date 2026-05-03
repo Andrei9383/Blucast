@@ -1,0 +1,12 @@
+{
+  "platform": "Linux-x86_64",
+  "generated": "2026-04-11T00:22:27Z",
+  "tools": {
+
+    "trivy": {"path": "/usr/bin/trivy", "sha256": "8266084a71d2e6a2333bc2c69b91c93c26dee9ef39ac2587ace2df54cc9b746b", "version": "Version: 0.69.3"},
+    "gitleaks": {"path": "/usr/local/bin/gitleaks", "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509", "version": "gitleaks version 8.30.1"},
+    "hadolint": {"path": "/usr/local/bin/hadolint", "sha256": "56de6d5e5ec427e17b74fa48d51271c7fc0d61244bf5c90e828aab8362d55010", "version": "Haskell Dockerfile Linter 2.12.0"},
+    "shellcheck": {"path": "/usr/bin/shellcheck", "sha256": "4646e83e2b125166060b8efa29fa5854c74ac80965a285739b8844821669d0bd", "version": "ShellCheck - shell script analysis tool"},
+    "yamllint": {"path": "/usr/bin/yamllint", "sha256": "1d433fede4b1c95bfb93cceda73a9bc72e2650960ddbbd1b4304f2a9496d1620", "version": "yamllint 1.37.1"}
+  }
+}

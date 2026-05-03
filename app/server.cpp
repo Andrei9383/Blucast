@@ -345,11 +345,15 @@ public:
 
         case MODE_BLUR:
             if (bgblurEff_) {
-                NvVFX_SetF32(bgblurEff_, NVVFX_STRENGTH, g_blurStrength.load());
+                float strength = g_blurStrength.load();
+                if (strength != lastBlurStrength_) {
+                    NvVFX_SetF32(bgblurEff_, NVVFX_STRENGTH, strength);
+                    NvVFX_Load(bgblurEff_);
+                    lastBlurStrength_ = strength;
+                }
                 NvVFX_SetImage(bgblurEff_, NVVFX_INPUT_IMAGE_0, &srcGPU_);
                 NvVFX_SetImage(bgblurEff_, NVVFX_INPUT_IMAGE_1, &dstGPU_);
                 NvVFX_SetImage(bgblurEff_, NVVFX_OUTPUT_IMAGE,  &blurGPU_);
-                NvVFX_Load(bgblurEff_);
                 if (NvVFX_Run(bgblurEff_, 0) == NVCV_SUCCESS) {
                     NvCVImage_Transfer(&blurGPU_, &resultW, 1.0f, stream_, NULL);
                 } else {
@@ -415,6 +419,7 @@ private:
     CUstream stream_;
     bool inited_, artifactInited_;
     int bufWidth_ = 0, bufHeight_ = 0;
+    float lastBlurStrength_ = -1.0f;
 
     NvCVImage srcGPU_{}, dstGPU_{}, blurGPU_{};
     NvCVImage artifactInGPU_{}, artifactOutGPU_{};
@@ -455,46 +460,49 @@ static void commandListener() {
             char *line = strtok(buf, "\n");
             while (line) {
                 std::string cmd(line);
-
-                if (cmd == "QUIT") {
-                    g_running = false;
-                } else if (cmd == "WINDOW:visible") {
-                    g_windowVisible = true;
-                } else if (cmd == "WINDOW:hidden") {
-                    g_windowVisible = false;
-                } else if (cmd.rfind("MODE:", 0) == 0) {
-                    g_effectMode = std::stoi(cmd.substr(5));
-                } else if (cmd.rfind("BLUR:", 0) == 0) {
-                    g_blurStrength = std::stof(cmd.substr(5));
-                } else if (cmd.rfind("BG:", 0) == 0) {
-                    std::lock_guard<std::mutex> lock(g_bgMutex);
-                    g_bgFile = cmd.substr(3);
-                    g_bgChanged = true;
-                } else if (cmd.rfind("DEVICE:", 0) == 0) {
-                    std::lock_guard<std::mutex> lock(g_deviceMutex);
-                    std::string dev = cmd.substr(7);
-                    if (dev != g_inputDevice) {
-                        g_inputDevice = dev;
-                        g_deviceChanged = true;
-                    }
-                } else if (cmd.rfind("RESOLUTION:", 0) == 0) {
-                    std::string res = cmd.substr(11);
-                    auto x = res.find('x');
-                    if (x != std::string::npos) {
-                        int w = std::stoi(res.substr(0, x));
-                        int h = std::stoi(res.substr(x + 1));
-                        if (w > 0 && h > 0) {
-                            g_cameraWidth  = w;
-                            g_cameraHeight = h;
+                try {
+                    if (cmd == "QUIT") {
+                        g_running = false;
+                    } else if (cmd == "WINDOW:visible") {
+                        g_windowVisible = true;
+                    } else if (cmd == "WINDOW:hidden") {
+                        g_windowVisible = false;
+                    } else if (cmd.rfind("MODE:", 0) == 0) {
+                        g_effectMode = std::stoi(cmd.substr(5));
+                    } else if (cmd.rfind("BLUR:", 0) == 0) {
+                        g_blurStrength = std::stof(cmd.substr(5));
+                    } else if (cmd.rfind("BG:", 0) == 0) {
+                        std::lock_guard<std::mutex> lock(g_bgMutex);
+                        g_bgFile = cmd.substr(3);
+                        g_bgChanged = true;
+                    } else if (cmd.rfind("DEVICE:", 0) == 0) {
+                        std::lock_guard<std::mutex> lock(g_deviceMutex);
+                        std::string dev = cmd.substr(7);
+                        if (dev != g_inputDevice) {
+                            g_inputDevice = dev;
+                            g_deviceChanged = true;
+                        }
+                    } else if (cmd.rfind("RESOLUTION:", 0) == 0) {
+                        std::string res = cmd.substr(11);
+                        auto x = res.find('x');
+                        if (x != std::string::npos) {
+                            int w = std::stoi(res.substr(0, x));
+                            int h = std::stoi(res.substr(x + 1));
+                            if (w > 0 && h > 0) {
+                                g_cameraWidth  = w;
+                                g_cameraHeight = h;
+                                g_cameraSettingsChanged = true;
+                            }
+                        }
+                    } else if (cmd.rfind("FPS:", 0) == 0) {
+                        int fps = std::stoi(cmd.substr(4));
+                        if (fps > 0 && fps <= 120) {
+                            g_cameraFps = fps;
                             g_cameraSettingsChanged = true;
                         }
                     }
-                } else if (cmd.rfind("FPS:", 0) == 0) {
-                    int fps = std::stoi(cmd.substr(4));
-                    if (fps > 0 && fps <= 120) {
-                        g_cameraFps = fps;
-                        g_cameraSettingsChanged = true;
-                    }
+                } catch (const std::exception &e) {
+                    std::cerr << "Bad command '" << cmd << "': " << e.what() << std::endl;
                 }
 
                 line = strtok(nullptr, "\n");
@@ -532,6 +540,7 @@ static void signalHandler(int) { g_running = false; }
 int main(int argc, char **argv) {
     signal(SIGINT,  signalHandler);
     signal(SIGTERM, signalHandler);
+    signal(SIGPIPE, SIG_IGN);
 
     setenv("OPENCV_VIDEOIO_PRIORITY_V4L2",     "990", 0);
     setenv("OPENCV_VIDEOIO_PRIORITY_GSTREAMER", "0",   0);
