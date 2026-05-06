@@ -1,4 +1,5 @@
-FROM docker.io/nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04 AS builder
+FROM docker.io/nvidia/cuda:12.9.1-cudnn-devel-ubuntu20.04 AS builder
+
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -6,11 +7,10 @@ RUN apt-get update && apt-get install -y \
     cmake build-essential libopencv-dev libv4l-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY sdk/TensorRT-8.5.1.7 /usr/local/TensorRT-8.5.1.7
+COPY sdk/TensorRT /usr/local/TensorRT
 COPY sdk/VideoFX          /usr/local/VideoFX
-COPY sdk/cudnn             /usr/local/cuda/
 
-ENV LD_LIBRARY_PATH=/usr/local/TensorRT-8.5.1.7/lib:/usr/local/VideoFX/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/VideoFX/external/tensorrt/lib:/usr/local/VideoFX/external/cuda/lib:/usr/local/VideoFX/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 WORKDIR /build
 COPY app/ /app/
@@ -18,9 +18,10 @@ COPY app/ /app/
 RUN mkdir -p /build/blucast && cd /build/blucast && \
     cmake /app \
     -DCMAKE_CXX_FLAGS='-I/usr/local/VideoFX/include -I/usr/local/VideoFX/share/samples/utils' \
-    -DCMAKE_EXE_LINKER_FLAGS='-L/usr/local/VideoFX/lib -Wl,-rpath,/usr/local/VideoFX/lib:/usr/local/TensorRT-8.5.1.7/lib' && \
+    -DCMAKE_EXE_LINKER_FLAGS='-L/usr/local/VideoFX/lib -L/usr/local/VideoFX/external/tensorrt/lib -L/usr/local/VideoFX/external/cuda/lib -Wl,-rpath,/usr/local/VideoFX/lib:/usr/local/VideoFX/external/tensorrt/lib:/usr/local/VideoFX/external/cuda/lib' && \
     make -j$(nproc)
 
+FROM docker.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu20.04
 RUN gcc -shared -fPIC -o /build/libcc_spoof.so /app/cc_spoof.c -ldl
 
 FROM docker.io/nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
@@ -45,13 +46,18 @@ RUN pip3 install --no-cache-dir PySide6 numpy
 COPY --from=builder /build/blucast/blucast_server /app/blucast_server
 COPY --from=builder /build/libcc_spoof.so /usr/local/lib/blucast/libcc_spoof.so
 
-COPY --from=builder /usr/local/TensorRT-8.5.1.7/lib/libnvinfer.so.8*        /usr/local/lib/blucast/
-COPY --from=builder /usr/local/TensorRT-8.5.1.7/lib/libnvinfer_plugin.so.8* /usr/local/lib/blucast/
-COPY --from=builder /usr/local/TensorRT-8.5.1.7/lib/libnvparsers.so.8*      /usr/local/lib/blucast/
-COPY --from=builder /usr/local/TensorRT-8.5.1.7/lib/libnvonnxparser.so.8*   /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/external/tensorrt/lib/libnvinfer.so*        /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/external/tensorrt/lib/libnvinfer_dispatch.so* /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/external/tensorrt/lib/libnvinfer_plugin.so* /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/external/tensorrt/lib/libnvonnxparser.so*   /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/external/cuda/lib/*.so.[0-9]* /usr/local/lib/blucast/
 COPY --from=builder /usr/local/VideoFX/lib/libVideoFX.so*     /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/lib/libVideoFXLocal.so* /usr/local/lib/blucast/
 COPY --from=builder /usr/local/VideoFX/lib/libNVCVImage.so*   /usr/local/lib/blucast/
 COPY --from=builder /usr/local/VideoFX/lib/libNVTRTLogger.so* /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/features/nvvfxgreenscreen/lib/libnvVFXGreenScreen.so /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/features/nvvfxbackgroundblur/lib/libnvVFXBackgroundBlur.so /usr/local/lib/blucast/
+COPY --from=builder /usr/local/VideoFX/features/nvvfxdenoising/lib/libnvVFXDenoising.so /usr/local/lib/blucast/
 
 COPY --from=builder /usr/local/VideoFX/lib/models /usr/local/VideoFX/lib/models
 

@@ -12,7 +12,9 @@ set(VFX_SDK     "/usr/local/VideoFX")
 set(VFX_INCLUDE "${VFX_SDK}/include")
 set(VFX_LIB     "${VFX_SDK}/lib")
 set(VFX_SAMPLES "${VFX_SDK}/share/samples")
-set(TRT_ROOT    "/usr/local/TensorRT-8.5.1.7")
+set(TRT_ROOT    "${VFX_SDK}/external/tensorrt")
+set(TRT_LIB     "${TRT_ROOT}/lib")
+set(CUDA_EXT_LIB "${VFX_SDK}/external/cuda/lib")
 
 include_directories(
     ${VFX_INCLUDE}
@@ -22,7 +24,7 @@ include_directories(
     ${CUDA_INCLUDE_DIRS}
 )
 
-link_directories(${VFX_LIB} ${TRT_ROOT}/lib)
+link_directories(${VFX_LIB} ${TRT_LIB} ${CUDA_EXT_LIB})
 
 add_executable(blucast_server server.cpp)
 
@@ -35,6 +37,6 @@ target_link_libraries(blucast_server
 )
 
 set_target_properties(blucast_server PROPERTIES
-    BUILD_RPATH  "${VFX_LIB};${TRT_ROOT}/lib"
-    INSTALL_RPATH "${VFX_LIB};${TRT_ROOT}/lib"
+    BUILD_RPATH  "${VFX_LIB};${TRT_LIB};${CUDA_EXT_LIB}"
+    INSTALL_RPATH "${VFX_LIB};${TRT_LIB};${CUDA_EXT_LIB}"
 )

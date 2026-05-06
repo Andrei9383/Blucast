@@ -818,7 +818,10 @@ def main():
         app.setWindowIcon(QIcon(LOGO_PATH))
 
     window = ControlPanel()
-    window.show()
+    if window.tray_available and window.tray_icon.isVisible():
+        send_command("WINDOW:hidden")
+    else:
+        window.show()
     sys.exit(app.exec())
 
 

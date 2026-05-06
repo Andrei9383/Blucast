@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VCAM_DEVICE="/dev/video10"
 SHARED_DIR="/tmp/blucast"
 GHCR_IMAGE="ghcr.io/andrei9383/blucast:latest"
-LOCAL_IMAGE="localhost/blucast:latest"
+LOCAL_IMAGES=("localhost/blucast:latest" "blucast:latest")
 
 if command -v podman &>/dev/null; then
     CONTAINER_CMD="podman"
@@ -15,17 +15,6 @@ elif command -v docker &>/dev/null; then
 else
     echo "Error: podman or docker required"
     exit 1
-fi
-
-if $CONTAINER_CMD image exists "$LOCAL_IMAGE" 2>/dev/null || \
-   $CONTAINER_CMD inspect "$LOCAL_IMAGE" &>/dev/null 2>&1; then
-    IMAGE_NAME="$LOCAL_IMAGE"
-else
-    IMAGE_NAME="$GHCR_IMAGE"
-    if ! $CONTAINER_CMD inspect "$IMAGE_NAME" &>/dev/null 2>&1; then
-        echo "Pulling BluCast image..."
-        $CONTAINER_CMD pull "$IMAGE_NAME"
-    fi
 fi
 
 if [ ! -e "$VCAM_DEVICE" ]; then
@@ -90,6 +79,22 @@ cleanup() {
           "$SHARED_DIR/server.pid" "$SHARED_DIR/.xauth"
 }
 trap cleanup EXIT
+
+IMAGE_NAME=""
+for image in "${LOCAL_IMAGES[@]}"; do
+    if $CONTAINER_CMD image exists "$image" 2>/dev/null || \
+       $CONTAINER_CMD inspect "$image" &>/dev/null 2>&1; then
+        IMAGE_NAME="$image"
+        break
+    fi
+done
+if [ -z "$IMAGE_NAME" ]; then
+    IMAGE_NAME="$GHCR_IMAGE"
+    if ! $CONTAINER_CMD inspect "$IMAGE_NAME" &>/dev/null 2>&1; then
+        echo "Pulling BluCast image..."
+        $CONTAINER_CMD pull "$IMAGE_NAME"
+    fi
+fi
 
 if [ "$CONTAINER_CMD" = "podman" ]; then
     GPU_ARGS="--device nvidia.com/gpu=all"

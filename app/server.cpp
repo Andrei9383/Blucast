@@ -21,6 +21,19 @@
 #include "nvVideoEffects.h"
 #include "opencv2/opencv.hpp"
 
+// VFX SDK 1.2 moved effect selector defines into per-feature headers that are
+// not on the default include path. Keep local fallbacks for the selectors used
+// by BluCast while preserving compatibility with older SDK headers.
+#ifndef NVVFX_FX_GREEN_SCREEN
+#define NVVFX_FX_GREEN_SCREEN "GreenScreen"
+#endif
+#ifndef NVVFX_FX_BGBLUR
+#define NVVFX_FX_BGBLUR "BackgroundBlur"
+#endif
+#ifndef NVVFX_FX_DENOISING
+#define NVVFX_FX_DENOISING "Denoising"
+#endif
+
 //  Paths ───────────────────────────────────────────────────────────────
 static const char *SHARED_DIR      = "/tmp/blucast";
 static const char *CMD_PIPE_PATH   = "/tmp/blucast/cmd.pipe";
@@ -32,7 +45,7 @@ static const char *VCAM_DEVICE     = "/dev/video10";
 
 //  Global state
 static std::atomic<bool>  g_running{true};
-static std::atomic<bool>  g_windowVisible{true};
+static std::atomic<bool>  g_windowVisible{false};
 static std::atomic<int>   g_effectMode{6};
 static std::atomic<float> g_blurStrength{0.5f};
 static std::atomic<int>   g_cameraWidth{1280};
@@ -223,7 +236,8 @@ public:
         std::cout << "Loading AI model..." << std::endl;
         err = NvVFX_Load(eff_);
         if (err != NVCV_SUCCESS) {
-            std::cerr << "Error loading model: " << err << std::endl;
+            std::cerr << "Error loading model: " << err
+                      << " (" << NvCV_GetErrorStringFromCode(err) << ")" << std::endl;
             return false;
         }
         std::cout << "Model loaded." << std::endl;
@@ -239,8 +253,8 @@ public:
             bgblurEff_ = nullptr;
         }
 
-        // Artifact reduction (denoise)
-        if (NvVFX_CreateEffect(NVVFX_FX_ARTIFACT_REDUCTION, &artifactEff_) == NVCV_SUCCESS) {
+        // Webcam denoising
+        if (NvVFX_CreateEffect(NVVFX_FX_DENOISING, &artifactEff_) == NVCV_SUCCESS) {
             NvVFX_SetCudaStream(artifactEff_, NVVFX_CUDA_STREAM, stream_);
             NvVFX_SetString(artifactEff_, NVVFX_MODEL_DIRECTORY, modelDir.c_str());
         } else {

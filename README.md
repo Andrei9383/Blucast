@@ -184,7 +184,7 @@ Your `sdk/` directory should look like:
 ```
 sdk/
 ├── VideoFX/
-├── TensorRT-8.5.1.7/
+├── TensorRT/
 └── cudnn/
 ```
 

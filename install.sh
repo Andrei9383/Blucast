@@ -133,7 +133,7 @@ if [ -f "$SCRIPT_DIR/sdk.tar.gz" ] && [ ! -d "$SDK_DIR/VideoFX" ]; then
     tar -xzf "$SCRIPT_DIR/sdk.tar.gz" -C "$SCRIPT_DIR"
 fi
 [ -d "$SDK_DIR/VideoFX" ]           || die "VideoFX SDK not found in sdk/"
-[ -d "$SDK_DIR/TensorRT-8.5.1.7" ]  || die "TensorRT SDK not found in sdk/"
+[ -d "$SDK_DIR/TensorRT" ]           || die "TensorRT SDK not found in sdk/"
 [ -d "$SDK_DIR/cudnn" ]              || die "cuDNN libraries not found in sdk/"
 log "All SDK components present"
 
